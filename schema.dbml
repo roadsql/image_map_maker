@@ -1,0 +1,127 @@
+Project "Hudson University Registrar"{database_type: 'PostgreSQL'Note: '''# Hudson University Course Registration
+This database has information about scheduled classes for Hudson University from 2017 through 2023.'''}
+Table public.approval {
+  approval_code char(4) [primary key,note:"A unique identifier for each approval condition, used to differentiate one approval condition from another when linking to other tables."]
+  description varchar(60) [note:"A textual description of the condition that needs to be met to be able to register for a section to which this approval condition is applied"]
+}Table public.building {
+  building_code char(4) [primary key,note:"A unique identifier for each building, used to differentiate one building from another when linking to other tables."]
+  name char(25) [note:"The name by which the bulding is known"]
+  address char(20) [note:"The street address of the building."]
+}Table public.crosslist {
+  course_code char(11) [note:"A foreign key that identifies one course that is crosslisted with at least one other course."]
+  group int [note:"An arbitrary number that indicates which courses are cross-listed with each other.  All courses with the same group are cross-listed with each other."]
+indexes{(course_code,group)[pk]}
+}Table public.corequisite {
+  course_code char(11) [note:"A foreign key that identifies the course that when a student takes, he or she must also register for some other course"]
+  coreq_code char(11) [note:"A foreign key that identifies the course which must be taken simultaneously with the course specified in the course_code column"]
+indexes{(course_code,coreq_code)[pk]}
+}Table public.course {
+  course_code char(11) [primary key,note:"A unique identifier for each course, used to differentiate one course from another when linking to other tables."]
+  title varchar(100) [note:"The title of the course at it will appear on a stduent's transcript"]
+  description varchar(3000) [note:"A detailed description of the material and topics to be incldued in the instruction of the course"]
+  dept_code char(4) [note:"A foreign key that indicates which department offers the course. "]
+  credits int [note:"The number of academic credits a student earns for earning a passing grade in the course."]
+  pre_reqs varhcar(250) [note:"A note about what is required before a student should enroll in the course"]
+  core_area varchar(25) [note:"Which area of the Liberal Arts Common Core is fulfilled by completing a particular course.  Students must take one class from each of the 6 categories listed by the end of their Sophomore year."]
+  inquiry_area varchar(30) [note:"In addition to the six common-core clases, students must complete two courses in each of the three areas of inquiry listed in this column to qualify for graduation"]
+  recommendation varchar(310) [note:"This a note indicating what students should consider to succeed in the course."]
+}Table public.course_emphasis {
+  emphasis_code char(4) [note:"A foreign key that identifies the emphasis for which a course fills a requirement"]
+  course_code char(10) [note:"A foreign key that identifies the course that fills a requirement"]
+indexes{(emphasis_code,course_code)[pk]}
+}Table public.delivery {
+  delivery_code char(4) [primary key,note:"A unique identifier for each mode of delivery, used to differentiate one mode of delivery from another when linking to other tables."]
+  name varchar(32) [note:"The name of the mode of delivery"]
+  description varchar(200) [note:"A textual description of the mode of delivery, indicating where and how students will meet for class insturction and discussion"]
+}Table public.department {
+  dept_code char(4) [primary key,note:"A unique identifier for each course, used to differentiate one course from another when linking to other tables."]
+  division char(32) [note:"One of the four major divisions of study to which the department belongs"]
+  name char(36) [note:"The name by which the department is know at the university"]
+  office_number char(5) [note:"The room number of the department administrative office"]
+  building_code char(4) [note:"A foreign key that indicates whcih building houses the department office"]
+  chair_code char(20) [note:"A foreign key that indicates which instructor is the department chairperson, having administrative responsibilities over the deparment"]
+  blurb varchar(250) [note:"A textual description the domain of the department"]
+}Table public.emphasis {
+  emphasis_code char(4) [primary key,note:"A unique identifier for each course, used to differentiate one course from another when linking to other tables."]
+  name varchar(40) [note:"The name by which a particular area of study is known"]
+  has_major boolean [note:"A ture or false value indicating if a student can choose the are of study as a major emphasis."]
+  has_minor boolean [note:"A ture or false value indicating if a student can choose the are of study as a minor emphasis."]
+  interdisciplinary boolean [note:"A ture or false value indicating the area of study involves courses from several departments"]
+  dept_code char(4) [note:"A foreign key that indicates the academic deparment that has primary responsibility for the area of study"]
+  director_code char(20) [note:"A foreign key that indicates the professor who is in charge of the area of study"]
+  description varchar(350) [note:"A textual description of the area of study"]
+}Table public.instruction {
+  instructor_code char(20) [note:"A foreign key indicating the instructor who is assigned to teach a particular section"]
+  section_id int [note:"A foreign key indicating a particular section which an instructor is scheduled to teach"]
+indexes{(instructor_code,section_id)[pk]}
+}Table public.instructor {
+  instructor_code char(20) [primary key,note:"A unique identifier for each instructor, used to differentiate one instructor from another when linking to other tables."]
+  first_name char(20) [note:"The given name of the instructor"]
+  last_name char(25) [note:"The family name of the instructor"]
+  dept_code char(4) [note:"A foreign key that identifies the department to which an instructor is attached"]
+  phone char(14) [note:"The telephone number of hte instructor.  For adjunct professors, this is thier home or mobile number.  For others, it is the official university-provided phone number."]
+  email char(30) [note:"The official, Hudson University email address of the instructor."]
+  office_number char(5) [note:"The room number of the professor's office in a particular building."]
+  building_code char(4) [note:"A foreign key that identifies the building where the professor's office is located."]
+  status char(9) [note:"A category indicating if the professor is an Adhunct (teaching at most one class per term), Cinical (teaching multiple classes per term, but not on a tenure track), Assistiant, (a professor working toward tenure), Associate (the next rank higher than \"assistant\" and typically accompanied by tenure), or Full (a full professor is the highest academic rank and is always accompanied with tenure)."]
+  terminal_degree char(3) [note:"The highest degree earned by the instructor"]
+  institution varchar(40) [note:"The name of the instution of higher education from which the insturcor reeived his or her terminal degree"]
+}Table public.meeting {
+  section_id int [note:"A foreign key that identifies the section to which the enrollment cap applies."]
+  days char(5) [note:"A string of characters that indicates which days of the week a section meets.  Monday (M), Tuesday(T), Wednesday(W), Thursday(R), Friday(F), Saturday(S)"]
+  start date [note:"The time of day the section meeting begins"]
+  duration int [note:"The number of minutes the meeting lasts"]
+  room char(5) [note:"The room number where the meeting take place"]
+  building_code char(4) [note:"A foreign key that indicates which building houses the room where the meetin takes place"]
+indexes{(section_id,days,start)[pk]}
+}Table public.restriction {
+  emphasis_code char(4) [note:"A foreign key that indicates the emphasis to which the restriction applies"]
+  course_code char(8) [note:"A foreign key that indicates the course to which the restriction applies"]
+  standing_allowed char(6) [note:"Indicates if majors or minors are allowed to register for a particular course"]
+indexes{(emphasis_code,course_code,standing_allowed)[pk]}
+}Table public.section {
+  section_id int [primary key,note:"A unique identifier for each section, used to differentiate one section from another when linking to other tables."]
+  term_code int [note:"A foreign key that identifies the academic term during which a section is offered"]
+  crn int [note:"The course registration number.  It is unique within a term and is used by studnts to identify a section during the regisration process"]
+  course_code char(10) [note:"A foreign key that identifies the course material taught in a particular section."]
+  sec_num int [note:"A number that differentiates between two sections of the same course in the same term.  The combination of course_code and section_num is unique within a term."]
+  status char(15) [note:"The status of a section , indicating if there are empty seats in the class (Open), if the number of registered students is at least as many as the sections's cap (closed) or if seats are allocated to students based on thier cohort (Reserved Seats)."]
+  delivery_code char(4) [note:"A foreign key indicating the deliver mode to be used for a particular section of a course"]
+  cap int [note:"The maximum number of students expected to enroll in a section.  Total enrollment may be higher based on instructor approval"]
+  approval_code char(4) [note:"A foreign key indicating special approval that is required for a student to register for a course"]
+  note varchar(210) [note:"A note with information specific to a section"]
+}Table public.student_cap {
+  section_id int [note:"A foreign key that identifies the section to which the enrollment cap applies."]
+  category varchar(35) [note:"The catgory of students to which the cap and enrollment apply.  This may be general (meaning the cap in enrollment apply to all categories of student equally), a class cohort (such as freshman, sophomore, etc.), or another catgory such as \"Sociology Majors.\""]
+  cap int [note:"The number of students for a particular combination of section and category who are allowed to register for the section without a registration overide proveide by the instructor"]
+  enrolled int [note:"The number of students of a particulary category actually registerd for a particular section"]
+indexes{(section_id,category)[pk]}
+}Table public.term {
+  term_code int [primary key,note:"A unique identifier for each term, used to differentiate one term from another when linking to other tables."]
+  year int [note:"The calendar year in which the term takes place"]
+  semester char(6) [note:"The semester of the term, either \"Spring\" or \"Fall\""]
+  begin Date [note:"The date classes begin for a term."]
+  end Date [note:"The last day of classes for a term"]
+}
+Ref: public.crosslist.course_code > public.course.course_code 
+Ref: public.corequisite.course_code > public.course.course_code 
+Ref: public.corequisite.coreq_code > public.course.course_code 
+Ref: public.course.dept_code > public.department.dept_code 
+Ref: public.course_emphasis.emphasis_code > public.emphasis.emphasis_code 
+Ref: public.course_emphasis.course_code > public.course.course_code 
+Ref: public.department.building_code > public.building.building_code 
+Ref: public.department.chair_code > public.instructor.instructor_code 
+Ref: public.emphasis.dept_code > public.department.dept_code 
+Ref: public.emphasis.director_code > public.instructor.instructor_code 
+Ref: public.instruction.instructor_code > public.instructor.instructor_code 
+Ref: public.instruction.section_id > public.section.section_id 
+Ref: public.instructor.building_code > public.building.building_code 
+Ref: public.meeting.section_id > public.section.section_id 
+Ref: public.meeting.building_code > public.building.building_code 
+Ref: public.restriction.emphasis_code > public.emphasis.emphasis_code 
+Ref: public.restriction.course_code > public.course.course_code 
+Ref: public.section.term_code > public.term.term_code 
+Ref: public.section.course_code > public.course.course_code 
+Ref: public.section.delivery_code > public.delivery.delivery_code 
+Ref: public.section.approval_code > public.approval.approval_code 
+Ref: public.student_cap.section_id > public.section.section_id 

@@ -1,0 +1,41 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+
+div.callout {
+	height: 60px;
+	width: 200px;
+	float: left;
+	background-color: #444;
+	position: relative;
+	color: #ccc;
+	padding: 10px;
+	border-radius: 3px;
+	margin: 25px;
+	min-height: 50px;
+	border: 1px solid #333;
+}
+
+.callout::before {
+	content: "";
+	border: 0.8em solid transparent;
+	position: absolute;
+}
+
+.callout.right::before {
+	left: -20px;
+	top: 5px;
+	border-right: 10px solid #444;
+}
+
+    </style>
+</head>
+<body>
+    <!--https://cssdeck.com/labs/bv45bh6p-->
+    <div class="callout right">Your Favourite HTML,CSS,JS Playground!</div>
+</body>
+</html>
