@@ -1,1 +1,1 @@
-magick convert hudson_registrar.png -transparent "#dddddd" hudson_registrar_transparent.png
+magick convert canvas.png -transparent "#dddddd" canvas_transparent.png

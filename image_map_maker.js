@@ -4,9 +4,14 @@ let current_point
 let sheet_data
 const tables=[]
 const links=[]
+let sheet_id
 function start_me_up(){
-
-
+    const url_params= get_params()
+    console.log("params",url_params)
+    console.log('url_params("sheet")', url_params["sheet"])
+    sheet_id=sheets[url_params["sheet"]].id
+    console.log("sheet_id", sheet_id)
+    console.log("sheets", sheets)
     fetch(`https://script.google.com/macros/s/${deployment_id}/exec?mode=diagram-data&sheetId=${sheet_id}`)
     .then((response) => response.json())
     .then((data) => {
@@ -135,19 +140,6 @@ async function save(){
 }
 
 
-async function server_post(payload) {
-  
-    let url =  `https://script.google.com/macros/s/${deployment_id}/exec`
-    console.log("url", url)
-    console.log("payload", payload)
-    const reply = await fetch(url, {
-      method: `POST`,
-      body: JSON.stringify(payload),
-    })
-    const data=await reply.text()
-    console.log("data",data)
-    return data
-}
 
 function image_click(e){
 
@@ -231,6 +223,3 @@ function set_link(evt, tr){
 }
 
 
-function tag(id){
-    return document.getElementById(id)
-}
