@@ -102,7 +102,7 @@ function build_map(){
     for(const link of links){
         console.log("link",link)
         const clause=`${link.fk.split(".")[0]} JOIN ${link.pk.split(".")[0]} ON ${link.fk} = ${link.pk}`
-        areas.push(`<area coords="${link.points.join(",")}" shape="poly" data-note="Join the &amp;quot;${link.fk.split(".")[0]}&amp;quot; table to the &amp;quot;${link.pk.split(".")[0]}&amp;quot; table." data-kind="link" data-heading="Relaionship" data-title="${clause}"></area>`)
+        areas.push(`<area coords="${link.points.join(",")}" shape="poly" data-note="Join the &amp;quot;${link.fk.split(".")[0]}&amp;quot; table to the &amp;quot;${link.pk.split(".")[0]}&amp;quot; table." data-kind="link" data-heading="Relationship" data-title="${clause}"></area>`)
     }
     console.log("areas", areas)
     tag("output").innerHTML = '<textarea id="html-output" style="width:100%"><img src="'+sheet_data[0][1]+'" usemap="#image-map" />' + areas.join("\n") + "\n</map></textarea>"
