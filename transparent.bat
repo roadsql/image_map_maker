@@ -1,1 +1,1 @@
-magick convert canvas.png -transparent "#dddddd" canvas_transparent.png
+magick convert store.png -transparent "#dddddd" store_transparent.png
