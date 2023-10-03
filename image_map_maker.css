@@ -4,7 +4,7 @@ body{
 }
 .grid-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: auto 1fr;
 }
 
 table, th, td {

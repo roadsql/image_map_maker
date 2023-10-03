@@ -1,0 +1,23 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        function get_data(){
+            fetch(`https://script.google.com/macros/s/AKfycbwQVELnhedWMLaiUn0y9Kye6G_kz3YxuLcxmhkswo0eFQeic9mNaRu0Ruo2CNRvv80y/exec`)
+            //fetch(`https://script.google.com/macros/s/AKfycbzJ3IKpVQfHcOolshtv9g7ldG3IbWLFXQS_CawQNQFvGnCVOfhAtH9E6JDt2nXjPmD3jQ/exec?mode=diagram-data&sheetId=1dM0loKCQwV132yLaZpBM_0pbv3pazY1YORkv_7IyCss`)
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data)
+            document.getElementById("results").innerHTML=JSON.stringify(data,null,2)
+            })
+
+        }
+    </script>
+</head>
+<body>
+    <button onclick="get_data()">get data</button>
+    <div id="results" style="white-space: pre-wrap;"></div>
+</body>
+</html>
