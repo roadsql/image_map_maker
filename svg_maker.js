@@ -5,50 +5,60 @@ let sheet_data
 const tables=[]
 const links=[]
 let sheet_id
-function start_me_up(){
-    
+function add_spans(text){
+    return "<span>" + text.split("").join("</span><span>") + "</span>"
+}
+
+function get_wrapped_text(div){
+    console.log(div)
+    const letters=[]
+    let top=0
+    for(const letter of div.querySelectorAll("span")){
+        if(top !== letter.offsetTop){
+            if(letters.length > 0 && letters[letters.length-1]){letters.pop()}
+            letters.push("\n")
+            top=letter.offsetTop
+        }
+        letters.push(letter.innerHTML)
+    }
+    letters.shift()
+    return letters.join("")
+
+}
+
+function build_wrapped_note(name, note, title){
+    //builds a div to be able to get the note telemetry with wraps
+    const div = document.createElement("div");
+    div.id="note-"+name
+    div.className="note"
+    div.innerHTML = add_spans(note)
+    document.getElementById("notes").appendChild(div);
+    div.dataset.title=btoa(title)
+    div.innerHTML=get_wrapped_text(div)
+}
+
+function start_me_up_svg(){
+    console.log("starting")
     const url_params= get_params()
     console.log("params",url_params)
     console.log('url_params("sheet")', url_params["sheet"])
     sheet_id=sheets[url_params["sheet"]].id
     console.log("sheet_id", sheet_id)
     console.log("sheets", sheets)
-    fetch(`https://script.google.com/macros/s/${deployment_id}/exec?mode=diagram-data&sheetId=${sheet_id}`)
+    fetch(`https://script.google.com/macros/s/${deployment_id}/exec?mode=svg-data&sheetId=${sheet_id}`)
     .then((response) => response.json())
     .then((data) => {
+        
         sheet_data = data
         console.log("data",data)
-        tag("image-div").innerHTML=`<img src="${data[0][1]}" onclick="image_click(event)">`
-        const html=[`<table style=" border-collapse: collapse;"><tr><th>Table</th><th>Top</th><th>Left</th><th>Field Top</th><th>Bottom</th><th>right</th></tr>`]
-        for(let x=1;x<data[1].length;x++){
-
-            if(data[1][x]){
-                const table=JSON.parse(data[1][x])
-                table.column=x
-                tables.push(table)
-                html.push(`<tr onclick="set_table(this)" id="${table.name}"><td>${table.name}</td><td class="f1">${table.points.top}</td><td class="f1">${table.points.left}</td><td class="f2">${table.points.fieldTop}</td><td class="f3">${table.points.bottom}</td><td class="f3">${table.points.right}</td></tr>`)
-            }
-        }
-        html.push("</table><br>")
-        html.push(`<table style=" border-collapse: collapse;"><tr><th>Link</th><th>coordinates</th></tr>`)
-        for(let x=1;x<data[2].length;x++){
-
-            if(data[2][x]){
-                const link=JSON.parse(data[2][x])
-                link.column=x
-                links.push(link)
-                console.log("link",link)
-                html.push(`<tr onclick="set_link(event, this)"><td>${link.name}</td><td id="link-${link.column}" class="f">${link.points.join(", ")}</td></tr>`)
-            }
-        }
-        html.push('</table><br><button onclick="save()">Save</button> <button onclick="build_map()">Map</button>')
-
-        tag("task-div").innerHTML=html.join("")
-
-        // build the tiles for making the diagram
-        for(const table of tables){
+     
+        // build the tiles for making the diagram.  this will allow us to see screen dimensions
+        for(const table of data.tables){
             const field_names=[]
+            build_wrapped_note(table.name, table.note, "Table: " + table.name)
             for(const field of table.fields){
+                build_wrapped_note(table.name+"-"+field.name, field.note, field.name + ": " + field.type)
+
                 if(field.pk){
                     field_names.push("<b>" + field.name + "</b>")
                 }else{
@@ -57,170 +67,421 @@ function start_me_up(){
                 
             }
             const newTable = document.createElement(`div`)
+            newTable.id=table.name+"-div"
             newTable.innerHTML = `<div class="relation-head">${table.name}</div><div class="relation-body">${field_names.join("<br>")}</div>`
             newTable.className="relation"
             tag("canvas").appendChild(newTable)
+            console.log(table.name,"width", newTable.clientWidth)
             
         }
+        // now build the svg 
+        const svg=[]
+
+        const uses=[]
+
+        const margin = 10
+        const table_name_height = 26
+        const field_name_height = 18
+        let left=margin
+        let top=margin
+        let max_height=0
+        let max_width=0
+        for(const table of data.tables){
+            if(table.position.linkLines){
+                for(const linkLine of table.position.linkLines){
+                    svg.push(svg_polyline(linkLine))                    
+                }
+            }
+        }
+
+        for(const table of data.tables){
+            if(table.position.left){left=table.position.left}
+            if(table.position.top){top=table.position.top}
+            console.log(table.name, top, left)
+            const table_width=tag(table.name+'-div').clientWidth
+            const id = table.name
+            if(left+table_width>max_width){
+                max_width = left+table_width
+            }
+            svg.push(svg_textbox(id, top, left, table_name_height, table_width, id,"table", "center"))
+            //uses.push(svg_place_object(id, margin, left))            
+            const field_names=[]
+            let field_top=top+table_name_height
+            for(const field of table.fields){
+                let class_name="field"
+                if(field.pk){
+                    class_name="key " + class_name
+                }
+
+                svg.push(svg_textbox(id + "-" +field.name, field_top, left, field_name_height, table_width, field.name, class_name, "5", "white"))
+                //uses.push(svg_place_object(id + "-" + field.name, field_top, left))            
+                field_top = field_top + field_name_height
+                if(field_top>max_height){
+                    max_height = field_top
+                }
+            }
+            left=left + margin + table_width
+
+        }
+
+
+
+
         console.log(tables)
-    });
+
+        svg.unshift(`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" height="${max_height+margin}"width="${max_width+margin}" style="background-color:whitesmoke">
+        <style>
+            .table {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 14px;
+                font-weight:bold;
+                fill:white;
+            }
+            .field{
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12px;
+                fill:#444;
+            }
+            .key{
+                font-weight:bold;
+            }
+            .table-box{
+                fill:#316896;
+                stroke:none;
+            }
+            .field-box{
+                fill:white;
+                stroke:none;
+            }
+            .field-hover{
+                fill:black;
+                opacity:0;
+                cursor:pointer;
+            }
+            .field-hover:hover{
+                opacity:.1;
+            }
+            .table-hover{
+                fill:white;
+                opacity:0;
+                cursor:pointer;
+            }
+            .table-hover:hover{
+                opacity:.4;
+            }
+            .text {
+                display: none;
+                fill:darkgreen;
+                cursor:pointer;
+            }
+
+            .link{
+                opacity: 0;
+                cursor:pointer;
+                stroke:#555;
+            }
+            .link:hover{
+                opacity: 0.3
+
+            }
+            .dd:hover .text {
+                display: block;
+            }
+            .info{
+                fill:white;
+            }
+        </style>
+
+        `)
+        //svg.push("</defs>")
+        svg.push(uses.join("\n"))
+        svg.push("</svg>")
+
+        tag("svg-div").innerHTML = svg.join("\n")
+    })
+
+    
+    
+}
+function svg_place_object(id, top, left){
+    //returns svg xml place an object at a location
+    return `<use xlink:href="#${id}" x="${left}" y="${top}" />`
+}
+
+function tag(id){
+    return document.getElementById(id)
+}
+function svg_polyline(linkLine){
+    //returns the svg xml to place a polyline
+    return`
+      <polyline points="${linkLine}" fill="none"  stroke-width="1" stroke="#555" stroke-linejoin="round"/>
+      <polyline points="${linkLine}" fill="none"   stroke-width="7" onclick="console.log('linking')" class="link"/>
+    
+    `
+
+}
+function svg_textbox(id, top, left, height, width, text, class_name, indent="center"){
+    // returns the svg xml to build a group that has a text in a box
+    //if indent is numeric, it will indicate how much to indent from left
+    let offset="50%"
+    let anchor="middle"
+    if(indent!=="center"){
+        offset=indent
+        anchor="left"
+    }
+    return `
+    <rect x="${left}" y="${top}" class="${class_name}-box" width="${width}" height="${height}"/>
+    <path id="${id}_path"  d="M${left} ${top+(height/2)}h${width}"/>
+    <text class="${class_name}">
+      <textPath href="#${id}_path" startoffset="${offset}" text-anchor="${anchor}"
+      dominant-baseline="middle" >${text}</textPath>
+    </text>
+    <g class="dd">
+      <rect x="${left}" y="${top}" class="${class_name}-hover" width="${width}" height="${height}" onclick="console.log('modify query')" /> 
+      <g onclick="d(event,'${id}')" class="text">
+      <circle cx="${left+width}" cy="${top+(height/2)}"  r="6" data-height="${tag("note-"+id).clientHeight}" data-width="${tag("note-"+id).clientWidth}"  data-title="${tag("note-"+id).dataset.title}" data-text="${btoa(tag("note-"+id).innerHTML)}"/>
+      <circle cx="${left+width}" cy="${top+(height/2)-3}" class="info"  r="1.2"/>
+      <rect x="${left+width-1}" y="${top+(height/2)-1}" width="2" height="5" class="info" />
+      </g>
+    </g>
+    `
     
 }
 
-function build_map(){
-    // build area map for tables and fields
-    let template = '<area data-note="[NOTE]" data-kind="table" data-heading="[TITLE]" data-title="[X]" coords="[C]" shape="rect">'
-    const areas=['<map name="image-map">']
-    let area
-    for(const table of tables){
-        const head_size = (table.points.fieldTop - table.points.top)
-        console.log(table.name, table)
-        area=template.replaceAll("[X]", table.name)
-        area=area.replace("[TITLE]", "Table " + table.name)
-        area=area.replace("[NOTE]", table.note)
-        area=area.replace("[C]", table.points.left + ",[C]")
-        area=area.replace("[C]", table.points.top + ",[C]")
-        area=area.replace("[C]", table.points.right + ",[C]")
-        area=area.replace("[C]", table.points.fieldTop)
-        areas.push(area)
-        let increment = table.points.fieldTop - table.points.top
-        const field_size = Math.round((table.points.bottom - table.points.fieldTop)/table.fields.length)
-        console.log("field_size",field_size)
-        for(let f=0; f<table.fields.length; f++){
-            const field = table.fields[f]
-            console.log("field", f, field)
-            const field_top=(parseInt(table.points.fieldTop) + f * field_size)
-            area=template.replaceAll("[X]", table.name + "." + field.name)
-            area=area.replace("[TITLE]", `${field.name}: ${field.type}`)
-            area=area.replace("[NOTE]", field.note.replaceAll('"','&amp;quot;'))
-            area=area.replace("[C]", table.points.left + ",[C]")
-            area=area.replace("[C]", field_top + ",[C]")
-            area=area.replace("[C]", table.points.right + ",[C]")
-            area=area.replace("[C]", field_top+field_size)
-            areas.push(area)
-        }
+
+function d(evt, id){
+    // diagram click.  It's name is short to keep the size of the svg small
+    console.log(evt.target.parentElement.parentElement.firstElementChild.width.baseVal.value, id)
+    const mask=evt.target.parentElement.parentElement.firstElementChild
+    const y = mask.y.baseVal.value
+    
+    let elem=evt.target
+    console.log("elem",elem.tagName)
+    while (elem.tagName !== 'g'){
+        elem=elem.parentElement
     }
-    for(const link of links){
-        console.log("link",link)
-        const clause=`${link.fk.split(".")[0]} JOIN ${link.pk.split(".")[0]} ON ${link.fk} = ${link.pk}`
-        areas.push(`<area coords="${link.points.join(",")}" shape="poly" data-note="Join the &amp;quot;${link.fk.split(".")[0]}&amp;quot; table to the &amp;quot;${link.pk.split(".")[0]}&amp;quot; table." data-kind="link" data-heading="Relationship" data-title="${clause}"></area>`)
+    elem=elem.firstElementChild
+    
+    console.log("elem",elem)
+    const title = atob(elem.dataset.title)
+    const note = atob(elem.dataset.text)
+    const note_width = parseFloat(elem.dataset.width)-8
+    console.log("note_width", note_width)
+
+
+    elem=evt.target
+    while (elem.tagName !== "svg"){
+        elem=elem.parentElement
     }
-    console.log("areas", areas)
-    tag("output").innerHTML = '<textarea id="html-output" style="width:100%"><img src="'+sheet_data[0][1]+'" usemap="#image-map" />' + areas.join("\n") + "\n</map></textarea>"
-    tag("html-output").style.height = tag("html-output").scrollHeight + 'px'
+
+
+    for(const part of elem.querySelectorAll(".added-svg")){
+        part.remove()
+    }
+
+
+    console.log(elem.width.baseVal.value)
+    const image_width = elem.width.baseVal.value
+    const image_height = elem.height.baseVal.value
+    const mask_left = mask.x.baseVal.value
+    const mask_right = mask_left + mask.width.baseVal.value
+    
+    const lines = note.split("\n")
+    const header_text_size=8
+    const text_size=8
+    const line_spacing=10
+    //const padding_top=1
+    const padding_bottom=2
+    const padding_left=4
+    const row_height = mask.height.baseVal.value
+    const border=1.3
+    const corner_radius = 4
+    const arrow_width=10
+    const title_height=12
+    const note_height=line_spacing*lines.length+padding_bottom
+    const height=note_height+title_height+2*border
+    const width=note_width+border*2
+    
+    let top=y-(height/2)+row_height-5
+    
+    if(top<2){
+      top=2
+    }else if(top + height + 4 > image_height){
+        top=image_height-height-4
+    }
+
+    let left=mask_right+arrow_width-1
+    let arrow_points=`${mask_right+2},${y+(row_height/2)} ${mask_right+arrow_width},${y+(row_height/2)-4} ${mask_right+arrow_width},${y+(row_height/2)+4}`
+    if(left+width > image_width){
+        left=mask_left-arrow_width-width-1
+        arrow_points=`${mask_left-2},${y+(row_height/2)} ${mask_left-arrow_width},${y+(row_height/2)-4} ${mask_left-arrow_width},${y+(row_height/2)+4}`
+    }
+    
+    
+    let shp
+
+    shp = document.createElementNS('http://www.w3.org/2000/svg','polygon');  
+    shp.setAttribute('fill', 'darkgreen');
+    shp.classList.add('added-svg');
+    shp.setAttribute('points',arrow_points);
+    shp.setAttribute('style',"fill:darkgreen;stroke:none;");
+    elem.appendChild(shp);
    
-}
+    shp = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    shp.setAttribute('fill', 'darkgreen');
+    shp.classList.add('added-svg');
+    shp.setAttribute('y',top);
+    shp.setAttribute('x',left);
+    shp.setAttribute('rx',corner_radius);
+    shp.setAttribute('height',height+(border*2));
+    shp.setAttribute('width',width+(border*2));
+    elem.appendChild(shp);
 
-async function save(){
-    console.log("saving", sheet_data)
-    for(const table of tables){
-        //vconsole.log(table.name, tag(table.name).children[1].innerHTML)
-        const table_data=JSON.parse(sheet_data[1][table.column])
-        table_data.points.top = tag(table.name).children[1].innerHTML
-        table_data.points.left = tag(table.name).children[2].innerHTML
-        table_data.points.fieldTop = tag(table.name).children[3].innerHTML
-        table_data.points.bottom = tag(table.name).children[4].innerHTML
-        table_data.points.right = tag(table.name).children[5].innerHTML
-        //console.log(table_data)
-        sheet_data[1][table.column]=JSON.stringify(table_data)
-    }
+    shp = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    shp.setAttribute('fill', 'white');
+    shp.classList.add('added-svg');
+    shp.setAttribute('y',top+border+title_height);
+    shp.setAttribute('x',left+border);
+    shp.setAttribute('rx',corner_radius-1);
+    shp.setAttribute('height',height-title_height);
+    shp.setAttribute('width',width);
+    elem.appendChild(shp);
 
-    for(const link of links){
-        //console.log(link, sheet_data[2][link.column])
-        const table_data=JSON.parse(sheet_data[2][link.column])
-        table_data.points = tag("link-"+link.column).innerHTML.replace(" ","").split(",").map(Number)
- 
-        //console.log(table_data)
-        sheet_data[2][link.column]=JSON.stringify(table_data)
-    }
-
-    console.log("saving", sheet_data)
-    const response = await server_post({mode:"set-diagram-data",sheetId:sheet_id,payload:JSON.stringify(sheet_data)})
-    console.log("done waiting")
-    console.log("response",response)
-}
-
-
-
-function image_click(e){
-
-    if(current_table){
-        const coords=[e.offsetY,e.offsetX]
-        const cells=current_table.querySelectorAll(".f"+current_point)
-        for(let x=0;x<cells.length;x++ ){
-            cells[x].innerHTML=coords[x]
-            cells[x].style.backgroundColor=null
-        }
+    shp = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    shp.setAttribute('fill', 'white');
+    shp.classList.add('added-svg');
+    shp.setAttribute('y',top+border+title_height);
+    shp.setAttribute('x',left+border);
+    shp.setAttribute('height',corner_radius);
+    shp.setAttribute('width',width);
+    elem.appendChild(shp);
+  
+  
+    shp = document.createElementNS('http://www.w3.org/2000/svg','text');
+    shp.setAttribute('fill', 'white');
+    shp.classList.add('added-svg');
+    shp.setAttribute('y',top+border+header_text_size);
+    shp.setAttribute('x',left + border +padding_left);
+    shp.setAttribute('font-size',header_text_size);
+    shp.innerHTML=title
+    elem.appendChild(shp);
     
-        current_point++
-
-        if(current_point > 3){
-            current_table = current_table.nextElementSibling
-            current_point = 1  
-        } 
-
-        console.log("current_table",current_table)
-
-        for(const node of current_table.querySelectorAll(".f"+current_point)){
-            node.style.backgroundColor="lemonchiffon"
-        }
-    }else if(current_link){
-        const cell=current_link.querySelector(".f")
-        let current_coords=cell.innerHTML
-        if(current_coords){current_coords+=", "}
-        current_coords+=e.offsetX + ", " + e.offsetY
-        cell.innerHTML=current_coords
+    
+    for(let x=0;x<lines.length;x++){
+        
+        shp = document.createElementNS('http://www.w3.org/2000/svg','text');
+        shp.setAttribute('fill', '#444');
+        shp.classList.add('added-svg');
+        shp.setAttribute('y',top+border+title_height+((1+x)*line_spacing));
+        shp.setAttribute('x',left + border+padding_left);
+        shp.setAttribute('font-size',text_size);
+        shp.innerHTML=lines[x]
+        elem.appendChild(shp);
     }
+  
+    shp = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    shp.setAttribute('fill', 'darkgreen');
+    shp.classList.add('added-svg');
+    shp.setAttribute('cy',top+border+6);
+    shp.setAttribute('cx',left + width - border -5);
+    shp.setAttribute('r',5);
+    shp.setAttribute('cursor',"pointer");
+    shp.setAttribute('onclick','close_note(event)')
+    elem.appendChild(shp);
+
+    shp = document.createElementNS('http://www.w3.org/2000/svg','text');
+    shp.setAttribute('fill', 'white');
+    shp.classList.add('added-svg');
+    shp.setAttribute('y',top+border+header_text_size+1);
+    shp.setAttribute('x',left + width - border -8);
+    shp.setAttribute('font-size',9);
+    shp.setAttribute('cursor',"pointer");
+    shp.setAttribute('font-weight',"bold");
+    shp.setAttribute('onclick','close_note(event)')
+    shp.innerHTML="X"
+    elem.appendChild(shp);
 
 
 }
 
-function set_table(tr){
-    current_link=null
-    if(current_table){
-        for(const node of current_table.querySelectorAll(".f"+current_point)){
-            node.style.backgroundColor=null
-        }
-    }    
-
-
-
-    if(!current_table){
-        current_table=tr
-        current_point=1
-    }else if(tr.id === current_table.id){
-        current_table=null
-        return
-    }else{
-        current_table=tr
-        current_point=1
+function close_note(evt){
+    console.log(evt)
+    let elem=evt.target
+    while (elem.tagName !== "svg"){
+        console.log(elem)
+        elem=elem.parentElement
+    }
+    for(const part of elem.querySelectorAll(".added-svg")){
+        part.remove()
     }
 
-    for(const node of current_table.querySelectorAll(".f"+current_point)){
-        node.style.backgroundColor="lemonchiffon"
-    }
+}
+function show_cursor_position(evt){
+   tag("coordinates").innerHTML=`${evt.offsetX},${evt.offsetY}`
 }
 
+function trap_keys(evt){
+    //console.log(evt, evt.key)
+    const[x,y, dx, dy] = get_coords()
+    switch(evt.key){
+        case "M":
+            append(evt.key, x,y )
+            new_x(x)
+            new_y(y)
+            break
+        case "m":
+            append(evt.key, dx,dy )
+            new_x(x)
+            new_y(y)
+            break
+        case "L":
+            append(evt.key, x,y )
+            new_x(x)
+            new_y(y)
+            break
+        case "l":
+            append(evt.key, dx,dy )
+            new_x(x)
+            new_y(y)
+            break
+        case "H":
+            append(evt.key, x )
+            new_x(x)
+            break
+        case "h":
+            append(evt.key, dx )
+            new_x(x)
+            break
+        case "V":
+            append(evt.key, y )
+            new_y(y)
+            break
+        case "v":
+            append(evt.key, dy )
+            new_y(yM)
+            break
 
-function set_link(evt, tr){
-    console.log("evt",evt)
 
-
-    current_table=null
-    if(current_link){
-      current_link.querySelector(".f").style.backgroundColor=null
-    }    
-
-    if(!current_link){
-        current_link=tr
-    }else if(tr === current_link){
-        current_link=null
-        return
-    }else{
-        current_link=tr
+        default:    
+    }   
+    evt.preventDefault()
+    function new_x(x){
+        evt.target.dataset.x=x
     }
-    current_link.querySelector(".f").style.backgroundColor="lemonchiffon"
-    current_link.querySelector(".f").innerHTML=""
+    function new_y(y){
+        evt.target.dataset.y=y
+    }
+    function append(){
+        let args = Array.from(arguments)
+        evt.target.value=evt.target.value + " " + args.shift() + args.join(",")
+        console.log(args)
+    }
+    function get_coords(){
+        const coords=tag("coordinates").innerHTML.split(",")
+        const x = parseInt(coords[0])
+        const y =parseInt(coords[1])
+        const old_x=parseInt(evt.target.dataset.x)
+        const old_y=parseInt(evt.target.dataset.y)
+        return [x,y,x-old_x,y-old_y]
+    }
 }
-
-

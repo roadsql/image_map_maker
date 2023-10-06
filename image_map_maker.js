@@ -6,7 +6,7 @@ const tables=[]
 const links=[]
 let sheet_id
 function start_me_up(){
-    
+    console.log("image_map_maker_startup")
     const url_params= get_params()
     console.log("params",url_params)
     console.log('url_params("sheet")', url_params["sheet"])
@@ -222,5 +222,9 @@ function set_link(evt, tr){
     current_link.querySelector(".f").style.backgroundColor="lemonchiffon"
     current_link.querySelector(".f").innerHTML=""
 }
+
+
+
+
 
 

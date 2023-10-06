@@ -7,14 +7,18 @@
     <script type="text/javascript" src="config.js"></script>
     <script type="text/javascript" src="utils.js"></script>
     <script type="text/javascript" src="svg_maker.js"></script>
-    <link rel="stylesheet" href="image_map_maker.css">
+    <link rel="stylesheet" href="svg_maker.css">
 </head>
-<body onload="start_me_up()">
+<body onload="start_me_up_svg()">
     <div class="grid-container">
         <div id="image-div"style="background-color:#ddd;"">Loading Data...</div>
         <div id="task-div"></div>
     </div>
     <div id="output" style="margin-top: 1rem;"></div>
+    <div id="svg-div" style="padding:1rem;background-color:#ddd; margin-top: 1rem;"  onmousemove="show_cursor_position(event)"></div>
+    <div><span id="coordinates">0,0</span><br><input data-x="0" data-y="0" type="text" style="width:100%" id="path" onkeydown="trap_keys(event)"></div>
     <div id="canvas" style="padding:4rem;background-color:#ddd; margin-top: 1rem;"></div>
+    <div id="notes" style="padding:4rem;background-color:#ddd; margin-top: 1rem;"></div>
+
 </body>
 </html>

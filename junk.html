@@ -3,21 +3,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script>
-        function get_data(){
-            fetch(`https://script.google.com/macros/s/AKfycbwQVELnhedWMLaiUn0y9Kye6G_kz3YxuLcxmhkswo0eFQeic9mNaRu0Ruo2CNRvv80y/exec`)
-            //fetch(`https://script.google.com/macros/s/AKfycbzJ3IKpVQfHcOolshtv9g7ldG3IbWLFXQS_CawQNQFvGnCVOfhAtH9E6JDt2nXjPmD3jQ/exec?mode=diagram-data&sheetId=1dM0loKCQwV132yLaZpBM_0pbv3pazY1YORkv_7IyCss`)
-            .then((response) => response.json())
-            .then((data) => {
-                console.log(data)
-            document.getElementById("results").innerHTML=JSON.stringify(data,null,2)
-            })
-
-        }
-    </script>
 </head>
 <body>
-    <button onclick="get_data()">get data</button>
-    <div id="results" style="white-space: pre-wrap;"></div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="100%"">
+        <style>
+            .table {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 14px;
+                font-weight:bold;
+                fill:white;
+
+            }
+        
+    </style>
+
+<defs>
+<g id="museum">
+    <rect width="90" height="30" stroke="none" fill="#316896"></rect>
+    <path id="museum_path" d="M0 15h90" stroke="red"></path>
+    <text class="table">
+      <textPath href="#museum_path" startOffset="50%" text-anchor="middle" dominant-baseline="middle">museum</textPath>
+    </text>
+    </g>
+<g id="museum_hours">
+    <rect width="119" height="30" stroke="none" fill="#316896"></rect>
+    <path id="museum_hours_path" d="M0 15h119" stroke="red"></path>
+    <text class="table">
+      <textPath href="#museum_hours_path" startOffset="50%" text-anchor="middle" dominant-baseline="middle">museum_hours</textPath>
+    </text>
+    </g>
+<g id="artist">
+    <rect width="103" height="30" stroke="none" fill="#316896"></rect>
+    <path id="artist_path" d="M0 15h103" stroke="red"></path>
+    <text class="table">
+      <textPath href="#artist_path" startOffset="50%" text-anchor="middle" dominant-baseline="middle">artist</textPath>
+    </text>
+    </g>
+<g id="work">
+    <rect width="85" height="30" stroke="none" fill="#316896"></rect>
+    <path id="work_path" d="M0 15h85" stroke="red"></path>
+    <text class="table">
+      <textPath href="#work_path" startOffset="50%" text-anchor="middle" dominant-baseline="middle">work</textPath>
+    </text>
+    </g>
+<g id="subject">
+    <rect width="67" height="30" stroke="none" fill="#316896"></rect>
+    <path id="subject_path" d="M0 15h67" stroke="red"></path>
+    <text class="table">
+      <textPath href="#subject_path" startOffset="50%" text-anchor="middle" dominant-baseline="middle">subject</textPath>
+    </text>
+    </g>
+</defs>
+<use xlink:href="#museum" x="0" y="10"></use>
+<use xlink:href="#museum_hours" x="100" y="10"></use>
+<use xlink:href="#artist" x="229" y="10"></use>
+<use xlink:href="#work" x="342" y="10"></use>
+<use xlink:href="#subject" x="437" y="10"></use>
+</svg>
 </body>
 </html>
