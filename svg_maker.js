@@ -86,12 +86,12 @@ function start_me_up_svg(){
         let top=margin
         let max_height=0
         let max_width=0
-        for(const table of data.tables){
-            if(table.position.linkLines){
-                for(const linkLine of table.position.linkLines){
-                    svg.push(svg_polyline(linkLine))                    
-                }
-            }
+        
+        // put the links on the lowest level of the svg 
+
+
+        for(const link of data.links){
+            svg.push(svg_path(link.path))                    
         }
 
         for(const table of data.tables){
@@ -200,7 +200,7 @@ function start_me_up_svg(){
         tag("svg-div").innerHTML = svg.join("\n")
     })
 
-    
+  tag("path").focus()  
     
 }
 function svg_place_object(id, top, left){
@@ -216,6 +216,16 @@ function svg_polyline(linkLine){
     return`
       <polyline points="${linkLine}" fill="none"  stroke-width="1" stroke="#555" stroke-linejoin="round"/>
       <polyline points="${linkLine}" fill="none"   stroke-width="7" onclick="console.log('linking')" class="link"/>
+    
+    `
+
+}
+function svg_path(path){
+    if(!path){return ""}
+    //returns the svg xml to place a polyline
+    return`
+      <path  d="${path}" fill="none"  stroke-width="1" stroke="#555" stroke-linejoin="round"/>
+      <path  d="${path}" fill="none"   stroke-width="7" onclick="console.log('linking')" class="link"/>
     
     `
 
@@ -417,54 +427,90 @@ function close_note(evt){
 
 }
 function show_cursor_position(evt){
-   tag("coordinates").innerHTML=`${evt.offsetX},${evt.offsetY}`
+    tag("coordinates").innerHTML=`${evt.offsetX},${evt.offsetY}`
+    const dx=evt.offsetX-(tag("path").dataset.x)
+    const dy=evt.offsetY-(tag("path").dataset.y)
+    tag("delta-coordinates").innerHTML=`${dx},${dy}`
 }
 
 function trap_keys(evt){
     //console.log(evt, evt.key)
-    const[x,y, dx, dy] = get_coords()
+    if(evt.target.value.length===0){evt.target.dataset.priorMove = 0}//reset
+    const[x,y, dx, dy, prior] = get_coords()
+    const radius=3
+    let steps
+    let adjustment
+    let this_sign
+    let prior_sign = "";if(prior<0){prior_sign="-"}
     switch(evt.key){
         case "M":
-            append(evt.key, x,y )
+            append(evt.key+x+","+y )
             new_x(x)
             new_y(y)
+            evt.preventDefault()
             break
         case "m":
-            append(evt.key, dx,dy )
+            append(evt.key+dx+","+dy )
             new_x(x)
             new_y(y)
+            evt.preventDefault()
             break
         case "L":
-            append(evt.key, x,y )
+            append(evt.key+x+","+y )
             new_x(x)
             new_y(y)
+            evt.preventDefault()
             break
         case "l":
-            append(evt.key, dx,dy )
+            append(evt.key+","+dx+","+dy )
             new_x(x)
             new_y(y)
-            break
-        case "H":
-            append(evt.key, x )
-            new_x(x)
+            evt.preventDefault()
             break
         case "h":
-            append(evt.key, dx )
+            this_sign = "";if(dx<0){this_sign="-"}
+            console.log("Prior",prior)
+            adjust_for_radius(evt.target)
+            adjustment = radius * (dx/Math.abs(dx)) * Math.abs(prior)
+            steps=[evt.key+(dx-adjustment)]
+            if(prior!==0){
+              steps.unshift(`a${radius},${radius} 0 0 ${((prior*(dx/Math.abs(dx)))-1)/-2} ${this_sign}${radius},${prior_sign}${radius} `)
+            }
+
+            append(...steps)
+
+            if(x>parseInt(evt.target.dataset.x)){
+                evt.target.dataset.priorMove = 1
+            }else{
+                evt.target.dataset.priorMove = -1
+            }
+            console.log("adjustment",adjustment)
             new_x(x)
-            break
-        case "V":
-            append(evt.key, y )
-            new_y(y)
+            evt.preventDefault()
             break
         case "v":
-            append(evt.key, dy )
-            new_y(yM)
+            
+            this_sign = "";if(dy<0){this_sign="-"}
+            adjust_for_radius(evt.target)
+            adjustment = radius * (dy/Math.abs(dy)) * Math.abs(prior)
+            steps=[evt.key+(dy-adjustment)]
+            if(prior!==0){
+                steps.unshift(`a${radius},${radius} 0 0 ${((prior*(dy/Math.abs(dy)))+1)/2} ${prior_sign}${radius},${this_sign}${radius} `)
+            }
+              append(...steps)
+            if(y>parseInt(evt.target.dataset.y)){
+                evt.target.dataset.priorMove = 1
+            }else{
+                evt.target.dataset.priorMove = -1
+            }
+            new_y(y)
+            evt.preventDefault()
             break
 
 
         default:    
     }   
-    evt.preventDefault()
+    
     function new_x(x){
         evt.target.dataset.x=x
     }
@@ -473,7 +519,9 @@ function trap_keys(evt){
     }
     function append(){
         let args = Array.from(arguments)
-        evt.target.value=evt.target.value + " " + args.shift() + args.join(",")
+        
+
+        evt.target.value=evt.target.value + " " + args.shift() + args.join(" ")
         console.log(args)
     }
     function get_coords(){
@@ -482,6 +530,24 @@ function trap_keys(evt){
         const y =parseInt(coords[1])
         const old_x=parseInt(evt.target.dataset.x)
         const old_y=parseInt(evt.target.dataset.y)
-        return [x,y,x-old_x,y-old_y]
+        return [x,y,x-old_x,y-old_y, parseInt(evt.target.dataset.priorMove)]
+    }
+    function adjust_for_radius(){ 
+        //reduce the length of hte last line by the radius
+        if(prior===0){return}// no prior line
+        const a=evt.target.value.split("")
+        const digits=[]
+        for(let x=0;x<a.length;x++){
+            const digit = a.pop()
+            if(isNaN(digit)){
+                a.push(digit)
+                break
+            }
+            digits.unshift(digit)
+        }
+        console.log("digits", digits)
+        a.push(parseInt(digits.join(""))-radius)
+        
+        evt.target.value=a.join("")
     }
 }
