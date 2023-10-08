@@ -30,11 +30,11 @@ table, th, td {
     padding:0 4px;
     font-size:12px;
 }
-.note{
+.svg-diagram-note{
     display:inline-block;
-    max-width: 120px;
+    max-width: 150px;
     padding: 4px 6px;
     background-color: white;
     margin:3px;
-    font-size:8px;
+    font-size:10px;
 }

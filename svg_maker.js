@@ -30,7 +30,7 @@ function build_wrapped_note(name, note, title){
     //builds a div to be able to get the note telemetry with wraps
     const div = document.createElement("div");
     div.id="note-"+name
-    div.className="note"
+    div.className="svg-diagram-note"
     div.innerHTML = add_spans(note)
     document.getElementById("notes").appendChild(div);
     div.dataset.title=btoa(title)
@@ -91,7 +91,9 @@ function start_me_up_svg(){
 
 
         for(const link of data.links){
-            svg.push(svg_path(link.path))                    
+            //work JOIN artist ON work.artist_id = artist.artist_id
+            const fragment=`${link.fk.split(".")[0]} JOIN ${link.pk.split(".")[0]} ON ${link.fk} = ${link.pk}`
+            svg.push(svg_path(link.path, fragment))                    
         }
 
         for(const table of data.tables){
@@ -129,7 +131,7 @@ function start_me_up_svg(){
 
         console.log(tables)
 
-        svg.unshift(`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" height="${max_height+margin}"width="${max_width+margin}" style="background-color:whitesmoke">
+        svg.unshift(`<svg id="diagram" xmlns="http://www.w3.org/2000/svg" height="${max_height+margin}"width="${max_width+margin}">
         <style>
             .table {
                 font-family: Arial, Helvetica, sans-serif;
@@ -154,12 +156,12 @@ function start_me_up_svg(){
                 stroke:none;
             }
             .field-hover{
-                fill:black;
+                fill:darkblue;
                 opacity:0;
                 cursor:pointer;
             }
             .field-hover:hover{
-                opacity:.1;
+                opacity:.2;
             }
             .table-hover{
                 fill:white;
@@ -169,29 +171,51 @@ function start_me_up_svg(){
             .table-hover:hover{
                 opacity:.4;
             }
-            .text {
-                display: none;
+            .info-button {
+                display:none;
+                fill:gray;
+                cursor:pointer;
+            }
+
+            .info-button:hover {
                 fill:darkgreen;
-                cursor:pointer;
             }
 
-            .link{
-                opacity: 0;
-                cursor:pointer;
-                stroke:#555;
-            }
-            .link:hover{
-                opacity: 0.3
-
-            }
-            .dd:hover .text {
+            .dd:hover .info-button {
                 display: block;
             }
             .info{
                 fill:white;
             }
+            .assn{
+                fill:none;
+                stroke-width:1;
+                stroke:#555;
+            }
+            .assn-mask{
+                fill:none;
+                stroke-width:7;
+                opacity: 0;
+                cursor:pointer;
+                stroke:#555;
+            }
+            .assn-mask:hover{
+                opacity: 0.3
+            }
+            .added-svg{
+                font-family:  Arial, Helvetica, sans-serif;
+                
+            }
+            .note-text{
+                font-size: 10px;
+            }
+            .note-head{
+                font-size: 8px;
+            }
         </style>
+        
 
+  
         `)
         //svg.push("</defs>")
         svg.push(uses.join("\n"))
@@ -214,20 +238,16 @@ function tag(id){
 function svg_polyline(linkLine){
     //returns the svg xml to place a polyline
     return`
-      <polyline points="${linkLine}" fill="none"  stroke-width="1" stroke="#555" stroke-linejoin="round"/>
-      <polyline points="${linkLine}" fill="none"   stroke-width="7" onclick="console.log('linking')" class="link"/>
-    
-    `
+      <polyline points="${linkLine}" class="assn"/>
+      <polyline points="${linkLine}" onclick="svg_diagram_click(event)" class="assn-mask"/>`
 
 }
-function svg_path(path){
+function svg_path(path, fragment){
     if(!path){return ""}
     //returns the svg xml to place a polyline
     return`
-      <path  d="${path}" fill="none"  stroke-width="1" stroke="#555" stroke-linejoin="round"/>
-      <path  d="${path}" fill="none"   stroke-width="7" onclick="console.log('linking')" class="link"/>
-    
-    `
+    <path  d="${path}" class="assn"/>
+    <path  d="${path}" onclick="svg_diagram_click(event)" class="assn-mask"  data-kind="link" data-fragment="${fragment}" />`
 
 }
 function svg_textbox(id, top, left, height, width, text, class_name, indent="center"){
@@ -246,12 +266,12 @@ function svg_textbox(id, top, left, height, width, text, class_name, indent="cen
       <textPath href="#${id}_path" startoffset="${offset}" text-anchor="${anchor}"
       dominant-baseline="middle" >${text}</textPath>
     </text>
-    <g class="dd">
-      <rect x="${left}" y="${top}" class="${class_name}-hover" width="${width}" height="${height}" onclick="console.log('modify query')" /> 
-      <g onclick="d(event,'${id}')" class="text">
-      <circle cx="${left+width}" cy="${top+(height/2)}"  r="6" data-height="${tag("note-"+id).clientHeight}" data-width="${tag("note-"+id).clientWidth}"  data-title="${tag("note-"+id).dataset.title}" data-text="${btoa(tag("note-"+id).innerHTML)}"/>
-      <circle cx="${left+width}" cy="${top+(height/2)-3}" class="info"  r="1.2"/>
-      <rect x="${left+width-1}" y="${top+(height/2)-1}" width="2" height="5" class="info" />
+    <g class="dd" data-height="${tag("note-"+id).clientHeight}" data-width="${tag("note-"+id).clientWidth}"  data-title="${tag("note-"+id).dataset.title}" data-text="${btoa(tag("note-"+id).innerHTML)}">
+      <rect x="${left}" y="${top}" class="${class_name}-hover" width="${width}" height="${height}" onclick="svg_diagram_click(event)" data-kind="table" data-fragment="${id.split("-").join(".")}" /> 
+      <g onclick="d(event,'${id}')" class="info-button">
+        <circle cx="${left+width}" cy="${top+(height/2)}"  r="6" />
+        <circle cx="${left+width}" cy="${top+(height/2)-3}" class="info"  r="1.2"/>
+        <rect x="${left+width-1}" y="${top+(height/2)-1}" width="2" height="5" class="info" />
       </g>
     </g>
     `
@@ -259,18 +279,19 @@ function svg_textbox(id, top, left, height, width, text, class_name, indent="cen
 }
 
 
-function d(evt, id){
+function d(evt){
     // diagram click.  It's name is short to keep the size of the svg small
-    console.log(evt.target.parentElement.parentElement.firstElementChild.width.baseVal.value, id)
+   // console.log(evt.target.parentElement.parentElement.firstElementChild.width.baseVal.value, id)
     const mask=evt.target.parentElement.parentElement.firstElementChild
     const y = mask.y.baseVal.value
     
     let elem=evt.target
-    console.log("elem",elem.tagName)
-    while (elem.tagName !== 'g'){
+    console.log("elem",elem.tagName, elem.className)
+    while (!(elem.tagName === 'g' && elem.className.baseVal==="dd")){
         elem=elem.parentElement
+        console.log("elem",elem.tagName, elem.className)
     }
-    elem=elem.firstElementChild
+    //elem=elem.firstElementChild
     
     console.log("elem",elem)
     const title = atob(elem.dataset.title)
@@ -298,8 +319,7 @@ function d(evt, id){
     
     const lines = note.split("\n")
     const header_text_size=8
-    const text_size=8
-    const line_spacing=10
+    const line_spacing=12
     //const padding_top=1
     const padding_bottom=2
     const padding_left=4
@@ -332,6 +352,7 @@ function d(evt, id){
 
     shp = document.createElementNS('http://www.w3.org/2000/svg','polygon');  
     shp.setAttribute('fill', 'darkgreen');
+    shp.classList.add('added-svg');
     shp.classList.add('added-svg');
     shp.setAttribute('points',arrow_points);
     shp.setAttribute('style',"fill:darkgreen;stroke:none;");
@@ -370,9 +391,9 @@ function d(evt, id){
     shp = document.createElementNS('http://www.w3.org/2000/svg','text');
     shp.setAttribute('fill', 'white');
     shp.classList.add('added-svg');
+    shp.classList.add('note-head');
     shp.setAttribute('y',top+border+header_text_size);
     shp.setAttribute('x',left + border +padding_left);
-    shp.setAttribute('font-size',header_text_size);
     shp.innerHTML=title
     elem.appendChild(shp);
     
@@ -382,9 +403,9 @@ function d(evt, id){
         shp = document.createElementNS('http://www.w3.org/2000/svg','text');
         shp.setAttribute('fill', '#444');
         shp.classList.add('added-svg');
+        shp.classList.add('note-text');
         shp.setAttribute('y',top+border+title_height+((1+x)*line_spacing));
         shp.setAttribute('x',left + border+padding_left);
-        shp.setAttribute('font-size',text_size);
         shp.innerHTML=lines[x]
         elem.appendChild(shp);
     }
@@ -550,4 +571,8 @@ function trap_keys(evt){
         
         evt.target.value=a.join("")
     }
+}
+
+function svg_diagram_click(evt){
+  console.log("clicking", evt)
 }
