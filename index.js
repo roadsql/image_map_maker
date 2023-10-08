@@ -9,6 +9,7 @@ function start_me_up(){
         html.push(`<option value="${key}">${val.name}</option>`)
     }
     html.push("</select><br>")
+    html.push('<button onclick="svg_maker()">svg Maker</button> ')
     html.push('<button onclick="map_maker()">Map Maker</button> ')
     html.push('<button onclick="sqlite()">SQLite data</button> ')
     html.push('<button onclick="make_csvs()">CSV</button> ')
@@ -18,6 +19,8 @@ function start_me_up(){
 
 function map_maker(){
     window.open("image_map_maker.html?sheet="+tag("sheet-id").value, "_blank");
+}function svg_maker(){
+    window.open("svg_maker.html?sheet="+tag("sheet-id").value, "_blank");
 }
 
 async function sqlite(){
