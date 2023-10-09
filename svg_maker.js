@@ -257,7 +257,7 @@ function svg_textbox(id, top, left, height, width, text, class_name, indent="cen
     let anchor="middle"
     if(indent!=="center"){
         offset=indent
-        anchor="left"
+        anchor="start"
     }
     return `
     <rect x="${left}" y="${top}" class="${class_name}-box" width="${width}" height="${height}"/>
